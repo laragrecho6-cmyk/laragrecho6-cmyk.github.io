@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>For You ❤️</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+* {
+  box-sizing: border-box;
+  font-family: 'Georgia', serif;
+}
+
+body {
+  margin: 0;
+  height: 100vh;
+  overflow: hidden;
+  background: #ffc0cb; /* LIGHT PINK BACKGROUND */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---------- PAGE CONTAINER ---------- */
+.page {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.page.active {
+  display: flex;
+}
+
+/* ---------- ENVELOPE ---------- */
+.envelope {
+  background: #fff;
+  padding: 40px;
+  border-radius: 20px;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%,100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.heart-btn {
+  margin-top: 20px;
+  background: pink;
+  border: none;
+  padding: 20px 30px;
+  border-radius: 50%;
+  font-size: 18px;
+  cursor: pointer;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+/* ---------- FIREWORK HEARTS ---------- */
+.heart {
+  position: absolute;
+  color: pink;
+  font-size: 20px;
+  animation: fly 2s linear forwards;
+}
+
+@keyframes fly {
+  from {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-200px) scale(1.5);
+    opacity: 0;
+  }
+}
+
+/* ---------- SCROLL ---------- */
+.scroll {
+  background: #fff8dc;
+  padding: 30px;
+  width: 85%;
+  max-height: 80%;
+  overflow-y: auto;
+  border-radius: 20px;
+  box-shadow: 0 15px 30px rgba(0,0,0,0.3);
+  animation: openScroll 1s ease;
+}
+
+@keyframes openScroll {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+.buttons {
+  margin-top: 30px;
+  text-align: center;
+}
+
+button.choice {
+  margin: 10px;
+  padding: 12px 25px;
+  font-size: 16px;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+}
+
+.yes {
+  background: pink;
+}
+
+.no {
+  background: #ddd;
+}
+
+/* ---------- FINAL MESSAGE ---------- */
+.final {
+  background: white;
+  padding: 40px;
+  border-radius: 20px;
+  font-size: 22px;
+  text-align: center;
+  animation: pop 1s ease;
+}
+
+@keyframes pop {
+  from { transform: scale(0); }
+  to { transform: scale(1); }
+}
+</style>
+</head>
+
+<body>
+
+<!-- PAGE 1 -->
+<div class="page active" id="page1">
+  <div class="envelope">
+    <h2>💌 A Letter For You</h2>
+    <button class="heart-btn" onclick="openLetter()">❤️ Press Me</button>
+  </div>
+</div>
+
+<!-- PAGE 2 -->
+<div class="page" id="page2">
+  <div class="scroll">
+    <p>
+Hi love. I just want to greet you a Happy Valentine’s Day, love. And I would like to ask you out, if you want to be my Valentine, hehehe.<br><br>
+
+Into the ending of the year 2025, I met you, and honestly I didn’t expect anything, pero you came into my life so naturally. You brought colors to my life, love, in ways I didn’t even know I needed. Little by little, you made my days brighter, my nights calmer, and my heart lighter. And I’m so, so grateful for that. Thank you, love.<br><br>
+
+You have been giving me so much love, understanding me, and staying with me even on my lowest days—when I’m quiet, when I’m makulit, when I don’t even understand myself. Thank you for choosing to stay, love, kahit hindi ako perfect.<br><br>
+
+Ken babii, sorry po if natuleng nak tagpaminsan, ken haan nak maawat, or minsan I say things without thinking. Sorry po if may mga times na napapasakit kita unintentionally. But please know that my heart is always pure when it comes to you.<br><br>
+
+You can give me one command, love, and I’ll do it for the rest of my life—anything, kahit personal, HEHEHE. I’m willing to learn, to change, and to grow, as long as it’s with you.<br><br>
+
+I love you, love. Truly.<br><br>
+
+Will you be my Valentine, love?
+    </p>
+
+    <div class="buttons">
+      <button class="choice yes" onclick="yes()">Yes 💖</button>
+      <button class="choice no" onclick="no()">No 🙈</button>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 3 -->
+<div class="page" id="page3">
+  <div class="final">
+    YEYYYYY 🥰💖<br><br>
+    Thank you love,<br>
+    I love youuuu 💕
+  </div>
+</div>
+
+<script>
+function openLetter() {
+  fireworks();
+  document.getElementById('page1').classList.remove('active');
+  setTimeout(() => {
+    document.getElementById('page2').classList.add('active');
+  }, 800);
+}
+
+function fireworks() {
+  for (let i = 0; i < 25; i++) {
+    const heart = document.createElement('div');
+    heart.className = 'heart';
+    heart.innerHTML = '💗';
+    heart.style.left = Math.random() * 100 + 'vw';
+    heart.style.top = '60%';
+    document.body.appendChild(heart);
+    setTimeout(() => heart.remove(), 2000);
+  }
+}
+
+function no() {
+  alert("Try again bleee 🥺💗");
+}
+
+function yes() {
+  document.getElementById('page2').classList.remove('active');
+  document.getElementById('page3').classList.add('active');
+}
+</script>
+
+</body>
+</html>
