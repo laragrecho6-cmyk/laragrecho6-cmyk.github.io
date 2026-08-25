@@ -112,23 +112,7 @@
           <div class="form-grid"><div class="field"><label for="from">From</label><input id="from" required maxlength="120" placeholder="Your name"></div><div class="field"><label for="to">To</label><input id="to" required maxlength="120" placeholder="Their name"></div></div>
           <div class="field"><label for="content">Your letter</label><textarea id="content" required maxlength="10000" placeholder="Dear you,..."></textarea></div>
           <div class="field"><label>Choose a paper</label><div class="themes">${Object.keys(themes).map(t=>`<button type="button" class="theme ${t==="pink"?"active":""}" data-theme="${t}" onclick="pickTheme('${t}')">${t[0].toUpperCase()+t.slice(1)}</button>`).join("")}</div></div>
-          <div class="field">
-  <label for="music">
-    Add a Spotify song
-    <span class="hint">(optional)</span>
-  </label>
-
-  <input
-    id="music"
-    type="url"
-    placeholder="https://open.spotify.com/track/..."
-  />
-
-  <div class="hint">
-    Copy the song link from Spotify and paste it here.
-    The Spotify player will appear after the letter is opened.
-  </div>
-</div>
+          <div class="field"><label for="music">Add a YouTube song <span class="hint">(optional)</span></label><input id="music" type="url" placeholder="https://www.youtube.com/watch?v=..."><div class="hint">The recipient taps Open Letter before the music begins.</div></div>
           <div id="formError"></div><button class="primary submit" type="submit">CREATE LETTER</button>
         </form></div></section>`;
     }
@@ -138,39 +122,16 @@
       document.querySelectorAll(".theme").forEach(b=>b.classList.toggle("active", b.dataset.theme===theme));
     }
 
-    function validSpotify(value) {
-  if (!value) {
-    return true;
-  }
-
-  try {
-    const url = new URL(value);
-
-    return (
-      url.protocol === "https:" &&
-      url.hostname.toLowerCase() === "open.spotify.com" &&
-      /^\/(track|album|playlist|episode|show)\/[A-Za-z0-9]+$/i.test(
-        url.pathname
-      )
-    );
-  } catch {
-    return false;
-  }
-}
+    function validYoutube(value) {
+      if (!value) return true;
+      try { const u = new URL(value); return ["youtube.com","www.youtube.com","youtu.be","m.youtube.com"].includes(u.hostname.toLowerCase()); } catch { return false; }
+    }
     function encode(data) { return btoa(unescape(encodeURIComponent(JSON.stringify(data)))).replaceAll("+","-").replaceAll("/","_").replaceAll("=",""); }
     function decode(value) { return JSON.parse(decodeURIComponent(escape(atob(value.replaceAll("-","+").replaceAll("_","/")+"=".repeat((4-value.length%4)%4))))); }
     function createLetter(event) {
       event.preventDefault();
       const music = document.getElementById("music").value.trim();
-      if (!validSpotify(music)) {
-  document.getElementById("formError").innerHTML = `
-    <div class="error">
-      Please enter a valid Spotify link from open.spotify.com.
-    </div>
-  `;
-
-  return;
-}
+      if (!validYoutube(music)) { document.getElementById("formError").innerHTML = `<div class="error">Please enter a valid YouTube link.</div>`; return; }
       const data = { id:crypto.randomUUID ? crypto.randomUUID().slice(0,12) : Math.random().toString(36).slice(2,14), from:document.getElementById("from").value.trim(), to:document.getElementById("to").value.trim(), content:document.getElementById("content").value.trim(), theme:selectedTheme, music, createdAt:new Date().toISOString() };
       const link = location.href.split("#")[0] + "#letter=" + encode(data);
       try { localStorage.setItem("lovee-"+data.id, JSON.stringify(data)); } catch {}
@@ -178,25 +139,7 @@
     }
     function copyLink() { const input=document.getElementById("shareLink"); input.select(); navigator.clipboard?.writeText(input.value); event.target.textContent="Copied!"; setTimeout(()=>event.target.textContent="Copy link",1500); }
     function escapeHtml(s) { return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
-    function getSpotifyEmbed(url) {
-  try {
-    const spotifyUrl = new URL(url);
-    const parts = spotifyUrl.pathname
-      .split("/")
-      .filter(Boolean);
-
-    if (parts.length !== 2) {
-      return null;
-    }
-
-    const type = parts[0];
-    const id = parts[1];
-
-    return `https://open.spotify.com/embed/${type}/${id}?utm_source=generator`;
-  } catch {
-    return null;
-  }
-}
+    function getYoutubeId(url) { try { const u=new URL(url); if(u.hostname==="youtu.be") return u.pathname.slice(1); return u.searchParams.get("v"); } catch { return null; } }
     function showLetter(data) {
       currentMusic=data.music;
       root.innerHTML = `<section class="screen letter-stage"><div class="eyebrow">Someone left you a letter</div><h2>You have mail.</h2><div class="envelope" onclick="openLetter()" role="button" tabindex="0" aria-label="Open letter"><div class="env-body" style="background:${themes[data.theme]||themes.pink}"></div><div class="flap" style="background:${themes[data.theme]||themes.pink}"></div><div class="seal">⌄</div></div><div class="open-note">Tap the envelope to open it</div></section>`;
@@ -204,60 +147,12 @@
     }
     function openLetter() {
       const d=window.currentLetter;
-      root.innerHTML = `<section class="screen letter-stage"><div class="paper ${d.theme}"><div class="paper-meta"><span>For ${escapeHtml(d.to)}</span><span>With love</span></div><h2>Dear <span id="typedName"></span>,</h2><div class="paper-body" id="typedBody"></div><div class="paper-meta" style="margin:50px 0 0"><span>Always,</span><span>${escapeHtml(d.from)}</span></div></div>${data.music ? `
-  <div class="music">
-    <button
-      onclick="toggleMusic()"
-      id="musicButton"
-    >
-      ▶
-    </button>
-
-    <span id="musicText">
-      Music for this moment
-    </span>
-
-    <div id="player" class="hidden"></div>
-  </div>
-` : ""}</section>`;
+      root.innerHTML = `<section class="screen letter-stage"><div class="paper ${d.theme}"><div class="paper-meta"><span>For ${escapeHtml(d.to)}</span><span>With love</span></div><h2>Dear <span id="typedName"></span>,</h2><div class="paper-body" id="typedBody"></div><div class="paper-meta" style="margin:50px 0 0"><span>Always,</span><span>${escapeHtml(d.from)}</span></div></div>${d.music?`<div class="music"><button onclick="toggleMusic()" id="musicButton">▶</button><span id="musicText">Music for this moment</span></div><div id="player" class="hidden"></div>`:""}</section>`;
       typeText("typedName",d.to,55,()=>typeText("typedBody",d.content,24));
-      if (data.music) {
-  startMusic(data.music);
-}
+      if(d.music) startMusic(d.music);
     }
     function typeText(id,text,speed,done) { let i=0, el=document.getElementById(id); const tick=()=>{ if(i<text.length){el.textContent+=text[i++]; setTimeout(tick,speed)} else if(done) done(); }; tick(); }
-    function startMusic(url) {
-  const embedUrl = getSpotifyEmbed(url);
-  const player = document.getElementById("player");
-
-  if (!embedUrl || !player) {
-    return;
-  }
-
-  player.innerHTML = `
-    <iframe
-      width="352"
-      height="152"
-      src="${embedUrl}"
-      allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-      title="Spotify letter soundtrack"
-      style="
-        width: min(100%, 352px);
-        height: 152px;
-        border: 0;
-        border-radius: 12px;
-      "
-    ></iframe>
-  `;
-
-  player.classList.remove("hidden");
-
-  const musicText = document.getElementById("musicText");
-
-  if (musicText) {
-    musicText.textContent = "Spotify music is ready";
-  }
-}
+    function startMusic(url) { const id=getYoutubeId(url); if(!id)return; document.getElementById("player").innerHTML=`<iframe width="1" height="1" src="https://www.youtube.com/embed/${id}?autoplay=1&loop=1&playlist=${id}" allow="autoplay" title="Letter music"></iframe>`; document.getElementById("musicText").textContent="Music is playing"; }
     function toggleMusic() { const p=document.getElementById("player"); const b=document.getElementById("musicButton"); if(p.classList.contains("hidden")){p.classList.remove("hidden"); b.textContent="Ⅱ"; document.getElementById("musicText").textContent="Music is playing"}else{p.classList.add("hidden");b.textContent="▶";document.getElementById("musicText").textContent="Music paused"} }
     function route() { if(location.hash.startsWith("#letter=")){ try{showLetter(decode(location.hash.slice(8)))}catch{root.innerHTML=`<section class="screen"><div class="panel"><h2>Letter not found.</h2><p>This link may be incomplete or expired.</p><button class="primary" onclick="home()">Go home</button></div></section>`} } else home(); }
     window.addEventListener("hashchange",route); route();
