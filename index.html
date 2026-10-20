@@ -14,7 +14,7 @@
 <!--
   HOSTING SETUP
   1. Create a Firebase project, add a Web app, and enable Firestore Database.
-  2. Paste your config into `firebaseConfig` in the script at the bottom of this file.
+  2. Paste your config into config.js (the small file next to this one).
      Until you do, the site runs in local-only demo mode (notes stay in each visitor's browser).
   3. In Firestore > Rules, publish these so visitors can read, post, and report, but not edit or delete:
 
@@ -207,6 +207,7 @@ textarea{display:block;width:100%;min-height:110px;max-height:320px;resize:none;
 
 <div id="toast" class="hidden" role="status" aria-live="polite"></div>
 
+<script src="config.js"></script>
 <script>
 /* =======================================================
    MRDCNHS Freedom Wall — App Logic
@@ -230,7 +231,7 @@ textarea{display:block;width:100%;min-height:110px;max-height:320px;resize:none;
 // Replace the values below with your own Firebase project's
 // config (Firebase Console → Project Settings → General →
 // "Your apps" → SDK setup and configuration).
-const firebaseConfig = {
+const firebaseConfigFallback = {
   apiKey: "YOUR_API_KEY",
   authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
   projectId: "YOUR_PROJECT_ID",
@@ -238,8 +239,10 @@ const firebaseConfig = {
   messagingSenderId: "YOUR_SENDER_ID",
   appId: "YOUR_APP_ID"
 };
+// The real config comes from config.js (loaded just before this script).
+const activeConfig = (typeof firebaseConfig !== "undefined") ? firebaseConfig : firebaseConfigFallback;
 
-const FIREBASE_CONFIGURED = !Object.values(firebaseConfig).some(
+const FIREBASE_CONFIGURED = !Object.values(activeConfig).some(
   (v) => typeof v === "string" && v.startsWith("YOUR_")
 );
 
@@ -260,7 +263,7 @@ async function connectFirebase() {
       import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"),
       import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js")
     ]);
-    const app = initializeApp(firebaseConfig);
+    const app = initializeApp(activeConfig);
     const database = fsModule.getFirestore(app);
     notesRef = fsModule.collection(database, "notes");
     db = database;
