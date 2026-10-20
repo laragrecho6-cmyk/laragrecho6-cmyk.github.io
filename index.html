@@ -29,7 +29,7 @@
              && request.resource.data.reportCount == 0;
            allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reported','reportCount'])
              && request.resource.data.reportCount == resource.data.reportCount + 1;
-           allow delete: if false;
+           allow delete: if request.auth != null && request.auth.uid == 'PASTE_YOUR_ADMIN_ID_HERE';
          }
        }
      }
@@ -59,6 +59,7 @@ button{font:inherit;cursor:pointer}
 .intro{max-width:30rem}
 .intro h1{font:700 clamp(3.4rem,9vw,6.5rem)/.95 var(--hand);margin:0 0 18px}
 .intro p{font-size:1.1rem;line-height:1.55;margin:0 0 26px;color:#dfe4f2}
+.landing-actions{display:flex;flex-wrap:wrap;gap:12px}
 .intro .fine{font-size:.9rem;margin:16px 0 0;color:#aab3cc}
 .cluster{position:relative;width:min(420px,40vw);aspect-ratio:1}
 .cluster .note-face{position:absolute;width:47%;min-height:0;padding:22px 14px 16px;font-size:1.25rem}
@@ -90,6 +91,12 @@ button{font:inherit;cursor:pointer}
 .note-face{padding:26px 20px 20px;min-height:190px}
 .note-yellow{background:#fff3b0}.note-pink{background:#ffd3e0}.note-purple{background:#e3d6ff}.note-blue{background:#cfe8ff}
 .note-black{background:#2e2e2e;color:#f4f4f4}.note-white{background:#fff}.note-peach{background:#ffe0c7}.note-mint{background:#cdf5de}
+.sticky-note.flagged{outline:3px dashed var(--pin);outline-offset:2px}
+.btn.danger{background:#fff;border-color:var(--pin);color:var(--pin)}
+.detail-actions{gap:10px;flex-wrap:wrap}
+.field{display:block;margin-bottom:14px;font-weight:600;font-size:.95rem}
+.field input{display:block;width:100%;margin-top:6px;padding:12px;border:2px solid #cfc9b8;border-radius:10px;background:#fff;color:var(--ink);font:inherit;font-weight:400}
+.form-error{min-height:1.4em;margin:0 0 10px;color:var(--pin);font-size:.9rem}
 .pop-in{animation:pop .35s cubic-bezier(.2,1.3,.4,1)}
 @keyframes pop{from{opacity:0;transform:scale(.6)}}
 
@@ -126,7 +133,10 @@ textarea{display:block;width:100%;min-height:110px;max-height:320px;resize:none;
   <div class="intro">
     <h1>MRDCNHS Freedom Wall</h1>
     <p>Write an anonymous note, pick the color that fits your mood, and pin it to the wall. No name, no account.</p>
-    <button id="enterWallBtn" class="btn primary big" type="button">Enter the wall</button>
+    <div class="landing-actions">
+      <button id="enterWallBtn" class="btn primary big" type="button">Enter the wall</button>
+      <button id="adminLandingBtn" class="btn ghost big" type="button">Admin login</button>
+    </div>
     <p class="fine">Notes are public. Be kind, and report anything that crosses the line.</p>
   </div>
   <div class="cluster" aria-hidden="true">
@@ -142,6 +152,9 @@ textarea{display:block;width:100%;min-height:110px;max-height:320px;resize:none;
     <h2>MRDCNHS Freedom Wall</h2>
     <button id="guidelinesBtn" class="btn ghost" type="button">Guidelines</button>
     <button id="colorGuideBtn" class="btn ghost" type="button">Color guide</button>
+    <button id="adminLoginBtn" class="btn ghost" type="button">Admin login</button>
+    <button id="adminLogoutBtn" class="btn ghost hidden" type="button">Log out (Lara)</button>
+    <button id="adminIdBtn" class="btn ghost hidden" type="button">Admin ID</button>
   </header>
 
   <div id="wallViewport">
@@ -177,7 +190,7 @@ textarea{display:block;width:100%;min-height:110px;max-height:320px;resize:none;
     <button id="closeDetailBtn" class="close" type="button" aria-label="Close">×</button>
     <div id="detailNote" class="note-face note-yellow"><p id="detailNoteText"></p></div>
     <p id="detailTimestamp"></p>
-    <div class="detail-actions"><button id="reportNoteBtn" class="btn" type="button">Report this note</button></div>
+    <div class="detail-actions"><button id="reportNoteBtn" class="btn" type="button">Report this note</button><button id="deleteNoteBtn" class="btn danger hidden" type="button">Delete note</button></div>
     <p id="reportConfirm" class="hidden">Thanks. Your report was sent.</p>
   </div>
 </div>
@@ -202,6 +215,21 @@ textarea{display:block;width:100%;min-height:110px;max-height:320px;resize:none;
     <button id="closeColorGuideBtn" class="close" type="button" aria-label="Close">×</button>
     <h3 id="colorGuideTitle">What the colors mean</h3>
     <div id="colorGuideList"></div>
+  </div>
+</div>
+
+<div id="adminOverlay" class="overlay hidden">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="adminTitle">
+    <button id="closeAdminBtn" class="close" type="button" aria-label="Close">×</button>
+    <h3 id="adminTitle">Admin login</h3>
+    <form id="adminForm">
+      <label class="field">Nickname<input id="adminNick" type="text" autocomplete="off" autocapitalize="off" required></label>
+      <p id="adminError" class="form-error" role="alert"></p>
+      <div class="actions">
+        <button id="cancelAdminBtn" class="btn" type="button">Cancel</button>
+        <button id="adminSubmitBtn" class="btn primary" type="submit">Log in</button>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -248,7 +276,7 @@ const FIREBASE_CONFIGURED = !Object.values(activeConfig).some(
 
 let db = null;         // Firestore database instance, once connected
 let notesRef = null;   // reference to the "notes" collection
-let addDoc, serverTimestamp, query, orderBy, limit, onSnapshot, doc, updateDoc, increment;
+let addDoc, serverTimestamp, query, orderBy, limit, onSnapshot, doc, updateDoc, increment, deleteDoc;
 let fsLib = null;       // the Firestore SDK functions, once loaded
 
 /** Tries to load the Firebase SDK from the CDN and connect to
@@ -256,7 +284,9 @@ let fsLib = null;       // the Firestore SDK functions, once loaded
  *  bad config, CDN unreachable, Firestore not set up, etc.) is
  *  caught here so the rest of the site keeps working in local
  *  demo mode instead of the whole page silently breaking. */
-async function connectFirebase() {
+let connectPromise = null;
+function connectFirebase() { return connectPromise || (connectPromise = connectFirebaseOnce()); }
+async function connectFirebaseOnce() {
   if (!FIREBASE_CONFIGURED) return false;
   try {
     const [{ initializeApp }, fsModule] = await Promise.all([
@@ -268,7 +298,8 @@ async function connectFirebase() {
     notesRef = fsModule.collection(database, "notes");
     db = database;
     fsLib = fsModule;
-    ({ addDoc, serverTimestamp, query, orderBy, limit, onSnapshot, doc, updateDoc, increment } = fsModule);
+    ({ addDoc, serverTimestamp, query, orderBy, limit, onSnapshot, doc, updateDoc, increment, deleteDoc } = fsModule);
+    await initAdminAuth(app); // has its own try/catch, so a login problem can never break the wall
     return true;
   } catch (err) {
     console.warn(
@@ -701,12 +732,22 @@ function subscribeToNotes() {
       (snapshot) => {
         setStatus(null);
         snapshot.docChanges().forEach((change) => {
-          if (change.type === "added") {
-            const data = change.doc.data();
-            if (data.reported && data.reportCount >= 5) return; // simple auto-hide threshold
-            renderNote({ id: change.doc.id, ...data });
-          } else if (change.type === "removed") {
-            removeNoteEl(change.doc.id);
+          const id = change.doc.id;
+          if (change.type === "removed") {
+            hiddenNotes.delete(id);
+            noteData.delete(id);
+            removeNoteEl(id);
+            return;
+          }
+          const note = { id, ...change.doc.data() };
+          noteData.set(id, note);
+          if (note.reported && note.reportCount >= 5) {
+            // auto-hide threshold: held back from visitors, still visible to the admin
+            hiddenNotes.set(id, note);
+            if (isAdmin) renderNote(note); else removeNoteEl(id);
+          } else {
+            hiddenNotes.delete(id);
+            if (change.type === "added") renderNote(note);
           }
         });
       },
@@ -739,6 +780,7 @@ function renderNote(note) {
   el.style.top = note.y + "px";
   el.style.transform = `rotate(${note.rotation || 0}deg)`;
   el.dataset.id = note.id;
+  if (note.reportCount >= 5) el.classList.add("flagged");
 
   const p = document.createElement("p");
   setTextSafely(p, note.text); // textContent only — never HTML — prevents injection
@@ -770,11 +812,16 @@ function removeNoteEl(id) {
 // ---------------------------------------------------------
 
 function openDetail(note, el) {
+  note = noteData.get(note.id) || note; // newest copy, so report counts are current
   activeDetailNoteId = note.id;
   COLORS.forEach((c) => detailNote.classList.remove(`note-${c.id}`));
   detailNote.classList.add(`note-${note.color}`);
   setTextSafely(detailNoteText, note.text);
   detailTimestamp.textContent = "Posted " + formatTimestamp(note.createdAt);
+  if (isAdmin) detailTimestamp.textContent += " · " + (note.reportCount || 0) + " report(s)";
+  deleteNoteBtn.textContent = "Delete note";
+  deleteNoteBtn.disabled = false;
+  deleteArmed = false;
   reportConfirm.classList.add("hidden");
   reportNoteBtn.disabled = false;
   reportNoteBtn.textContent = "Report this note";
@@ -814,7 +861,146 @@ reportNoteBtn.addEventListener("click", async () => {
 });
 
 // ---------------------------------------------------------
-// 11. GUIDELINES / COLOR GUIDE MODALS
+// 11. ADMIN LOGIN + DELETE
+// ---------------------------------------------------------
+// One admin only: Lara. A nickname alone can't protect deleting (anyone can
+// read this file), so the first time you log in as Lara, your phone gets a
+// private Firebase ID, and the Firestore rules let ONLY that ID delete notes.
+// "Log out" just hides the admin tools. It never signs the phone out of
+// Firebase, because that would throw the ID away.
+
+const ADMIN_NICKNAME = "lara";
+const ADMIN_FLAG = "fw_admin_on";
+
+const adminLoginBtns = [$("adminLoginBtn"), $("adminLandingBtn")];
+const adminLogoutBtn = $("adminLogoutBtn");
+const adminIdBtn = $("adminIdBtn");
+const adminOverlay = $("adminOverlay");
+const adminForm = $("adminForm");
+const adminNick = $("adminNick");
+const adminError = $("adminError");
+const adminSubmitBtn = $("adminSubmitBtn");
+const deleteNoteBtn = $("deleteNoteBtn");
+
+let isAdmin = false;
+let authLib = null;
+let auth = null;
+let authUser = null;
+let deleteArmed = false;
+const hiddenNotes = new Map(); // notes held back from visitors by reports
+const noteData = new Map();    // latest copy of every note, by id
+
+function adminFlag(on) {
+  try {
+    if (on === undefined) return localStorage.getItem(ADMIN_FLAG) === "1";
+    if (on) localStorage.setItem(ADMIN_FLAG, "1"); else localStorage.removeItem(ADMIN_FLAG);
+  } catch (e) { /* storage blocked: admin tools just won't persist */ }
+  return false;
+}
+
+async function initAdminAuth(app) {
+  try {
+    authLib = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
+    auth = authLib.getAuth(app);
+    authLib.onAuthStateChanged(auth, (user) => { authUser = user; refreshAdmin(); });
+  } catch (err) {
+    console.warn("[MRDCNHS Freedom Wall] Admin login unavailable.", err);
+  }
+}
+
+function refreshAdmin() { setAdmin(!!authUser && adminFlag()); }
+
+function setAdmin(flag) {
+  isAdmin = flag;
+  adminLoginBtns.forEach((b) => b.classList.toggle("hidden", flag));
+  adminLogoutBtn.classList.toggle("hidden", !flag);
+  adminIdBtn.classList.toggle("hidden", !flag);
+  deleteNoteBtn.classList.toggle("hidden", !flag);
+  if (flag) hiddenNotes.forEach((n) => renderNote(n));
+  else hiddenNotes.forEach((n, id) => removeNoteEl(id));
+}
+
+const closeAdmin = () => adminOverlay.classList.add("hidden");
+adminLoginBtns.forEach((b) => b.addEventListener("click", () => {
+  adminError.textContent = "";
+  adminOverlay.classList.remove("hidden");
+  adminNick.focus();
+}));
+$("closeAdminBtn").addEventListener("click", closeAdmin);
+$("cancelAdminBtn").addEventListener("click", closeAdmin);
+adminOverlay.addEventListener("click", (e) => { if (e.target === adminOverlay) closeAdmin(); });
+
+adminForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  adminError.textContent = "";
+  if (adminNick.value.trim().toLowerCase() !== ADMIN_NICKNAME) {
+    adminError.textContent = "That nickname isn't recognized.";
+    return;
+  }
+  adminSubmitBtn.disabled = true;
+  try {
+    await connectFirebase();
+    if (!auth) {
+      adminError.textContent = "Couldn't reach Firebase. Check config.js and your connection.";
+      return;
+    }
+    if (auth.authStateReady) await auth.authStateReady(); // let a saved admin ID load first
+    if (!auth.currentUser) await authLib.signInAnonymously(auth);
+    authUser = auth.currentUser;
+    adminFlag(true);
+    refreshAdmin();
+    closeAdmin();
+    showToast("Logged in as Lara.");
+  } catch (err) {
+    const off = err && (err.code === "auth/operation-not-allowed" || err.code === "auth/admin-restricted-operation");
+    adminError.textContent = off
+      ? "Turn on Anonymous sign-in in Firebase Authentication first."
+      : "Couldn't log in. Please try again.";
+  } finally {
+    adminSubmitBtn.disabled = false;
+  }
+});
+
+adminLogoutBtn.addEventListener("click", () => {
+  adminFlag(false);
+  refreshAdmin();
+  showToast("Logged out.");
+});
+
+adminIdBtn.addEventListener("click", async () => {
+  const uid = authUser && authUser.uid;
+  if (!uid) return;
+  try {
+    await navigator.clipboard.writeText(uid);
+    showToast("Admin ID copied. Paste it into your Firestore rules.");
+  } catch (err) {
+    window.prompt("Your admin ID (press and hold to copy):", uid);
+  }
+});
+
+deleteNoteBtn.addEventListener("click", async () => {
+  if (!isAdmin || !activeDetailNoteId) return;
+  if (!deleteArmed) { // two taps, so a stray touch can't delete a note
+    deleteArmed = true;
+    deleteNoteBtn.textContent = "Tap again to delete";
+    return;
+  }
+  deleteNoteBtn.disabled = true;
+  try {
+    await deleteDoc(doc(db, "notes", activeDetailNoteId));
+    detailOverlay.classList.add("hidden");
+    showToast("Note deleted.");
+  } catch (err) {
+    console.error(err);
+    showToast("Couldn't delete. Check that your admin ID is in the Firestore rules.");
+    deleteNoteBtn.disabled = false;
+    deleteNoteBtn.textContent = "Delete note";
+    deleteArmed = false;
+  }
+});
+
+// ---------------------------------------------------------
+// 12. GUIDELINES / COLOR GUIDE MODALS
 // ---------------------------------------------------------
 
 guidelinesBtn.addEventListener("click", () => guidelinesOverlay.classList.remove("hidden"));
