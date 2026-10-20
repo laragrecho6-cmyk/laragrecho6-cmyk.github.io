@@ -1,11 +1,9 @@
-// Paste your Firebase config here, replacing everything below.
-// Firebase Console > Project settings (gear icon) > Your apps > SDK setup and configuration > Config.
-// Keep the first line as "const firebaseConfig = {" and the last line as "};"
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyAtIIwSbvOc9HK6H6KmdJJRb45ffcKlwBk",
+  authDomain: "mrdcnhs-freedom-wall.firebaseapp.com",
+  projectId: "mrdcnhs-freedom-wall",
+  storageBucket: "mrdcnhs-freedom-wall.firebasestorage.app",
+  messagingSenderId: "89832011524",
+  appId: "1:89832011524:web:ab260e3bbe082c1c674251",
+  measurementId: "G-N7WXT5G4R7"
 };
